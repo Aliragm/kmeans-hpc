@@ -4,19 +4,19 @@
 #include "dataset.h"
 
 void sequential_kmeans(int k, char*** dataset, int row_count){
+
+    if (row_count <= 0 || dataset == NULL) return;
+
     int dimensions = 0;
-    char** clusters = NULL;
 
     int* assignments = malloc(row_count * sizeof(int));
     for (int i = 0; i < row_count; i++) {
         assignments[i] = -1;
     }
 
-    while (dataset[1][dimensions] != NULL) {
-        printf("[%s] ", dataset[1][dimensions]);
+    while (dataset[0][dimensions] != NULL) {
         dimensions++;
     }
-    printf("\n");
 
     float** centroids = malloc(k * sizeof(float*));
     generate_centroids(k, dataset, centroids, dimensions, row_count);
@@ -39,7 +39,7 @@ void sequential_kmeans(int k, char*** dataset, int row_count){
         } 
 
         if (changed == 1) {
-            // update_centroids(dataset, centroids, assignments, k, dimensions, row_count);
+            update_centroids(dataset, centroids, assignments, k, dimensions, row_count);
         } else {
             converged = 1;
             printf("The algorithm converged after %d iterations\n", iterations);
@@ -54,7 +54,7 @@ void sequential_kmeans(int k, char*** dataset, int row_count){
     }
 
     free_centroids(k, centroids);
-
+    free(assignments);
 }
 
 int main(int argc, char *argv[]){

@@ -145,3 +145,40 @@ int assimilate_to_centroid(char** point, float** centroids, int k, int dimension
 
     return closest_centroid;
 }
+
+void update_centroids(char*** dataset, float** centroids, int* assignments, int k, int dimensions, int row_count) {
+    float** new_sums = malloc(k * sizeof(float*));
+    int* cluster_sizes = calloc(k, sizeof(int));
+
+    for (int i = 0; i < k; i++) {
+        new_sums[i] = calloc(dimensions, sizeof(float));
+    }
+
+    for (int i = 0; i < row_count; i++) {
+        int cluster_id = assignments[i];
+        
+        if (cluster_id >= 0 && cluster_id < k) {
+            cluster_sizes[cluster_id]++;
+            
+            for (int j = 0; j < dimensions; j++) {
+                if (dataset[i][j] != NULL) {
+                    new_sums[cluster_id][j] += atof(dataset[i][j]);
+                }
+            }
+        }
+    }
+
+    for (int c = 0; c < k; c++) {
+        if (cluster_sizes[c] > 0) {
+            for (int j = 0; j < dimensions; j++) {
+                centroids[c][j] = new_sums[c][j] / cluster_sizes[c];
+            }
+        } 
+    }
+
+    for (int i = 0; i < k; i++) {
+        free(new_sums[i]);
+    }
+    free(new_sums);
+    free(cluster_sizes);
+}
