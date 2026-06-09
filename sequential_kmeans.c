@@ -15,6 +15,8 @@ void sequential_kmeans(int k, char*** dataset, int row_count, const char* origin
     float** centroids = malloc(k * sizeof(float*));
     generate_centroids(k, dataset, centroids, row_count, start_col, end_col);
 
+    clock_t tempo_inicio = clock();
+
     int converged = 0;
     int iterations = 0;
 
@@ -45,6 +47,11 @@ void sequential_kmeans(int k, char*** dataset, int row_count, const char* origin
             break; 
         }
     }
+
+    clock_t tempo_fim = clock();
+    double tempo_gasto = (double)(tempo_fim - tempo_inicio) / CLOCKS_PER_SEC;
+    printf("\n--- metricas do baseline ---\n");
+    printf("tempo de execucao sequencial: %f segundos\n", tempo_gasto);
 
     export_dataset_with_clusters(original_filename, "clusters_sequential_kmeans.csv", assignments, row_count, start_row);
 
