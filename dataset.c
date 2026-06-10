@@ -6,187 +6,89 @@
 
 #define MAX_LINE_SIZE 1024
 
-char*** read_csv(const char* FILENAME, int* out_row_count, int without_header) {
-
-    if(!(without_header == 0 || without_header == 1)){
-        fprintf(stderr, "Error: without_header must be 0 (false) or 1 (true).\n");
-        return NULL;        
-    }
-
-    char*** dataset = NULL;
-    int counter = 0;
-
-    FILE *file = fopen(FILENAME, "r");
+float* read_csv_to_floats(const char* FILENAME, int* out_row_count, int start_col, int end_col, int without_header) {
+    FILE* file = fopen(FILENAME, "r");
     if (file == NULL) {
         perror("Error opening file");
         return NULL;
     }
 
+    int num_cols = end_col - start_col + 1;
+    int capacity = 1024;
+    float* data = malloc(capacity * num_cols * sizeof(float));
+    int row_count = 0;
     char line[MAX_LINE_SIZE];
-    
-    //descomentar para tirar o cabecalho do arquivo
-    if(without_header == 1){
+
+    if (without_header) {
         if (fgets(line, sizeof(line), file) == NULL) {
             fclose(file);
-            return NULL; 
+            free(data);
+            return NULL;
         }
     }
-    
 
     while (fgets(line, sizeof(line), file) != NULL) {
-        int internal_counter = 0;
-        char** dataset_line = NULL;
-
         line[strcspn(line, "\r\n")] = '\0';
 
-        char *token = strtok(line, ",");
+        if (row_count >= capacity) {
+            capacity *= 2;
+            data = realloc(data, capacity * num_cols * sizeof(float));
+        }
+
+        int col = 0;
+        int data_idx = 0;
+        char* token = strtok(line, ",");
         while (token != NULL) {
-            dataset_line = realloc(dataset_line, (internal_counter + 1) * sizeof(char*));
-            
-            dataset_line[internal_counter] = strdup(token); 
-            
-            internal_counter++;
+            if (col >= start_col && col <= end_col) {
+                data[row_count * num_cols + data_idx] = atof(token);
+                data_idx++;
+            }
+            col++;
             token = strtok(NULL, ",");
         }
 
-        dataset_line = realloc(dataset_line, (internal_counter + 1) * sizeof(char*));
-        dataset_line[internal_counter] = NULL;
+        if (data_idx != num_cols) {
+            fprintf(stderr, "Warning: row %d has %d columns, expected %d\n", row_count + 1, data_idx, num_cols);
+        }
 
-        dataset = realloc(dataset, (counter + 1) * sizeof(char**));
-        dataset[counter] = dataset_line;
-
-        counter++;
+        row_count++;
     }
 
     fclose(file);
-    
-    *out_row_count = counter; 
-    return dataset;
+
+    data = realloc(data, row_count * num_cols * sizeof(float));
+    *out_row_count = row_count;
+    return data;
 }
 
-void free_dataset(char*** dataset, int row_count){
-    for (int i = 0; i < row_count; i++) {
-        int j = 0;
-        while (dataset[i][j] != NULL) {
-            free(dataset[i][j]);
-            j++;
-        }
-        free(dataset[i]);
-    }
-    free(dataset);
-}
+void generate_centroids(int k, float* flat_dataset, float* flat_centroids, int row_count, int num_cols) {
+    float* min_values = malloc(num_cols * sizeof(float));
+    float* max_values = malloc(num_cols * sizeof(float));
 
-void generate_centroids(int k, char*** dataset, float** centroids, int row_count, int start_col, int end_col) {
-    int total_cols = end_col - start_col + 1;
-    float* min_values = malloc(total_cols * sizeof(float));
-    float* max_values = malloc(total_cols * sizeof(float));
-
-    for (int j = 0; j < total_cols; j++) {
+    for (int j = 0; j < num_cols; j++) {
         min_values[j] = FLT_MAX;
         max_values[j] = -FLT_MAX;
     }
 
     for (int i = 0; i < row_count; i++) {
-        for (int j = start_col; j <= end_col; j++) {
-            if (dataset[i][j] != NULL) {
-                float current_number = strtof(dataset[i][j], NULL);
-                int local_col = j - start_col;
-                
-                if (current_number < min_values[local_col]) min_values[local_col] = current_number;
-                if (current_number > max_values[local_col]) max_values[local_col] = current_number;
-            }
+        for (int j = 0; j < num_cols; j++) {
+            float val = flat_dataset[i * num_cols + j];
+            if (val < min_values[j]) min_values[j] = val;
+            if (val > max_values[j]) max_values[j] = val;
         }
     }
 
     for (int i = 0; i < k; i++) {
-        centroids[i] = malloc(total_cols * sizeof(float)); 
-
-        for (int j = 0; j < total_cols; j++) {
+        for (int j = 0; j < num_cols; j++) {
             float min = min_values[j];
             float max = max_values[j];
-
             float random_factor = (float)rand() / (float)RAND_MAX;
-            centroids[i][j] = min + random_factor * (max - min);
+            flat_centroids[i * num_cols + j] = min + random_factor * (max - min);
         }
     }
 
     free(min_values);
     free(max_values);
-}
-
-void free_centroids(int k, float** centroids){
-    for(int i = 0; i < k; i++) {
-        free(centroids[i]);
-    }
-    free(centroids);
-}
-
-int assimilate_to_centroid(char** point, float** centroids, int k, int start_col, int end_col) {
-    int closest_centroid = -1;
-    float min_distance = FLT_MAX;
-
-    for (int c = 0; c < k; c++) {
-        float current_distance = 0.0;
-
-        // Loop genérico usando as colunas demarcadas
-        for (int d = start_col; d <= end_col; d++) {
-            if (point[d] != NULL) {
-                float point_value = atof(point[d]);
-                // Mapeia a coluna do dataset para o índice local do centroide
-                float centroid_value = centroids[c][d - start_col]; 
-                
-                float diff = point_value - centroid_value;
-                current_distance += diff * diff;
-            }
-        }
-
-        if (current_distance < min_distance) {
-            min_distance = current_distance;
-            closest_centroid = c;
-        }
-    }
-
-    return closest_centroid;
-}
-
-void update_centroids(char*** dataset, float** centroids, int* assignments, int k, int row_count, int start_col, int end_col) {
-    float** new_sums = malloc(k * sizeof(float*));
-    int* cluster_sizes = calloc(k, sizeof(int));
-
-    for (int i = 0; i < k; i++) {
-        // Aloca espaço baseado no intervalo de colunas que estamos usando
-        new_sums[i] = calloc((end_col - start_col + 1), sizeof(float));
-    }
-
-    for (int i = 0; i < row_count; i++) {
-        int cluster_id = assignments[i];
-        
-        if (cluster_id >= 0 && cluster_id < k) {
-            cluster_sizes[cluster_id]++;
-            
-            // Loop corre apenas no intervalo das colunas desejadas
-            for (int j = start_col; j <= end_col; j++) {
-                if (dataset[i][j] != NULL) {
-                    // Ajustamos o índice para gravar a partir do 0 na matriz local do centroide
-                    new_sums[cluster_id][j - start_col] += atof(dataset[i][j]);
-                }
-            }
-        }
-    }
-
-    for (int c = 0; c < k; c++) {
-        if (cluster_sizes[c] > 0) {
-            for (int j = start_col; j <= end_col; j++) {
-                centroids[c][j - start_col] = new_sums[c][j - start_col] / cluster_sizes[c];
-            }
-        } 
-    }
-
-    for (int i = 0; i < k; i++) {
-        free(new_sums[i]);
-    }
-    free(new_sums);
-    free(cluster_sizes);
 }
 
 void export_dataset_with_clusters(const char* original_filename, const char* output_filename, int* assignments, int row_count, int start_row) {
@@ -215,14 +117,10 @@ void export_dataset_with_clusters(const char* original_filename, const char* out
 
         if (current_file_row < start_row) {
             fprintf(outfile, "%s,\n", line);
-        } 
-
-        else if (assignment_idx < row_count) {
+        } else if (assignment_idx < row_count) {
             fprintf(outfile, "%s,%d\n", line, assignments[assignment_idx]);
             assignment_idx++;
-        } 
-    
-        else {
+        } else {
             fprintf(outfile, "%s,\n", line);
         }
         current_file_row++;
