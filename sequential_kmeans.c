@@ -89,7 +89,7 @@ void sequential_kmeans(int k, float* flat_dataset, int row_count, const char* or
     free(assignments);
 }
 
-int main(int argc, char *argv[]) {
+int main(void) {
     srand(time(NULL));
 
     int row_count = 0;
