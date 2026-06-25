@@ -80,6 +80,7 @@ void mpi_openmp_kmeans(
     // irá compartilhar esse vetor com todos os outros processos.
     float* flat_centroids = malloc(k * num_cols * sizeof(float));
     if (rank == 0) {
+        srand(time(NULL));
         generate_centroids(k, flat_dataset, flat_centroids, row_count, num_cols);
     }
     MPI_Bcast(flat_centroids, k * num_cols, MPI_FLOAT, 0, MPI_COMM_WORLD);
