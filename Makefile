@@ -1,6 +1,7 @@
 # compilador e flags
+mpicc   = mpicc
 cc      = gcc
-cflags  = -o3 -Wall -Wextra
+cflags  = -O3 -Wall -Wextra
 libs    = -lm
 
 # arquivos fonte
@@ -10,6 +11,9 @@ bin     = kmeans_otimizado
 # alvos do gerador de dados
 gerador_src = gerador_iris.c
 gerador_bin = gerador
+
+mpi_openmp_src = mpi_openmp_kmeans.c dataset.c
+mpi_openmp_bin = mpi_openmp_kmeans
 
 # padrao: compila o kmeans otimizado
 all: $(bin)
@@ -30,12 +34,15 @@ gerador: $(gerador_src)
 datasets: gerador
 	./$(gerador_bin)
 
+mpi_openmp: $(mpi_openmp_src)
+	$(mpicc) $(cflags) $^ -o $(mpi_openmp_bin) -fopenmp
+
 # executa o kmeans com o iris original
 run: $(bin)
 	./$(bin)
 
 # limpa arquivos compilados e saidas
 clean:
-	rm -f *.o $(bin) $(gerador_bin) clusters_*.csv
+	rm -f *.o $(bin) $(gerador_bin) $(mpi_openmp_bin) clusters_*.csv
 
 .PHONY: all gerador datasets run clean
