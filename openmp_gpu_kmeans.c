@@ -26,8 +26,7 @@ void openmp_gpu_kmeans(
     int* assignments = malloc(row_count * sizeof(int));
     for (int i = 0; i < row_count; i++) assignments[i] = -1;
 
-    // Buffers auxiliares para o recálculo dos centróides na GPU.
-    // São alocados no host, mas usados apenas na GPU (map alloc).
+    // buffers auxiliares usados so na gpu para recalculo dos centroides
     float* centroid_sums = calloc(k * num_cols, sizeof(float));
     int* cluster_counts = calloc(k, sizeof(int));
 
@@ -36,15 +35,9 @@ void openmp_gpu_kmeans(
 
     double start_time = omp_get_wtime();
 
-    // O bloco 'target data' transfere os dados para a GPU uma única vez e os mantém
-    // lá durante todas as iterações do K-means, eliminando transferências repetidas.
-    //
-    // flat_dataset  → somente leitura (to): enviado ao device, nunca precisa voltar
-    // flat_centroids → leitura/escrita (tofrom): enviado ao inicio, retorna ao final
-    // assignments   → leitura/escrita (tofrom): atualizado na GPU, retorna ao final
-    //                 para ser exportado via export_dataset_with_clusters
-    // centroid_sums, cluster_counts → apenas alocados na GPU (alloc): zerados
-    //                                 explicitamente a cada iteração por um kernel
+    // mantem os dados na gpu durante todas as iteracoes para evitar
+    // transferencias repetidas. dataset: so leitura (to). centroides e
+    // assignments: leitura/escrita (tofrom). buffers auxiliares: so gpu (alloc)
     #pragma omp target data \
         map(to: flat_dataset[0:row_count * num_cols]) \
         map(tofrom: flat_centroids[0:k * num_cols], assignments[0:row_count]) \
@@ -53,13 +46,9 @@ void openmp_gpu_kmeans(
         while (converged == 0 && iterations < MAX_ITERATIONS) {
             int changed = 0;
 
-            // Fase 1 — atribuição: cada ponto é atribuído ao centróide mais próximo.
-            //
-            // 'teams distribute' cria times de threads e distribui as iterações
-            // do loop entre os times (warps/blocks na GPU).
-            // 'parallel for' paraleliza as iterações dentro de cada time.
-            // 'reduction(+:changed)' acumula o flag de convergência de forma
-            // segura entre todos os threads, sem condição de corrida.
+            // fase 1: atribuicao. teams distribute divide as iteracoes entre
+            // os blocos da gpu, parallel for paraleliza dentro de cada bloco.
+            // reduction acumula o flag de mudanca sem condicao de corrida
             #pragma omp target teams distribute parallel for \
                 reduction(+:changed)
             for (int i = 0; i < row_count; i++) {
@@ -86,35 +75,27 @@ void openmp_gpu_kmeans(
             }
 
             if (changed > 0) {
-                // Zera os acumuladores na GPU antes de recalcular os centróides
+                // zera os acumuladores na gpu antes de recalcular
                 #pragma omp target teams distribute parallel for
                 for (int i = 0; i < k * num_cols; i++) {
                     centroid_sums[i] = 0.0f;
+                    if (i < k) cluster_counts[i] = 0;
                 }
 
-                #pragma omp target teams distribute parallel for
-                for (int i = 0; i < k; i++) {
-                    cluster_counts[i] = 0;
-                }
-
-                // Fase 2 — acumulação: soma as features de cada ponto ao seu cluster.
-                //
-                // '#pragma omp atomic' garante que atualizações concorrentes de threads
-                // distintos no mesmo cluster sejam serializadas corretamente na GPU.
+                // fase 2: acumulacao. atomic necessario pois threads diferentes
+                // podem escrever no mesmo cluster simultaneamente
                 #pragma omp target teams distribute parallel for
                 for (int i = 0; i < row_count; i++) {
                     int cluster = assignments[i];
-
                     #pragma omp atomic
                     cluster_counts[cluster]++;
-
                     for (int j = 0; j < num_cols; j++) {
                         #pragma omp atomic
                         centroid_sums[cluster * num_cols + j] += flat_dataset[i * num_cols + j];
                     }
                 }
 
-                // Fase 3 — atualização: recalcula cada centróide como média dos pontos
+                // fase 3: recalculo dos centroides como media dos pontos do cluster
                 #pragma omp target teams distribute parallel for
                 for (int c = 0; c < k; c++) {
                     if (cluster_counts[c] > 0) {
@@ -132,8 +113,6 @@ void openmp_gpu_kmeans(
             iterations++;
         }
     }
-    // Ao sair do bloco 'target data', flat_centroids e assignments são copiados
-    // de volta para o host automaticamente (map tofrom).
 
     double end_time = omp_get_wtime();
     double total_time = end_time - start_time;
