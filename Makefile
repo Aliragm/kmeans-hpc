@@ -1,6 +1,7 @@
 # compilador e flags
 mpicc   = mpicc
 cc      = gcc
+nvc     = nvc
 cflags  = -O3 -Wall -Wextra
 libs    = -lm
 
@@ -14,6 +15,9 @@ gerador_bin = gerador
 
 mpi_openmp_src = mpi_openmp_kmeans.c dataset.c
 mpi_openmp_bin = mpi_openmp_kmeans
+
+openmp_gpu_src = openmp_gpu_kmeans.c dataset.c
+openmp_gpu_bin = openmp_gpu_kmeans
 
 # padrao: compila o kmeans otimizado
 all: $(bin)
@@ -37,12 +41,15 @@ datasets: gerador
 mpi_openmp: $(mpi_openmp_src)
 	$(mpicc) $(cflags) $^ -o $(mpi_openmp_bin) -fopenmp
 
+openmp_gpu: $(openmp_gpu_src)
+	$(nvc) -mp=gpu -Minfo=mp -O2 $^ -o $(openmp_gpu_bin)
+
 # executa o kmeans com o iris original
 run: $(bin)
 	./$(bin)
 
 # limpa arquivos compilados e saidas
 clean:
-	rm -f *.o $(bin) $(gerador_bin) $(mpi_openmp_bin) clusters_*.csv
+	rm -f *.o $(bin) $(gerador_bin) $(mpi_openmp_bin) $(openmp_gpu_bin) clusters_*.csv
 
-.PHONY: all gerador datasets run clean
+.PHONY: all gerador datasets run clean mpi_openmp openmp_gpu
