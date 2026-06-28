@@ -19,4 +19,4 @@ nvc -mp=gpu -Minfo=mp -O2 -o openmp_gpu_kmeans openmp_gpu_kmeans.c dataset.c
 # <start_row>: linha inicial para leitura do dataset (0-indexed)
 # <start_col>: coluna inicial para leitura do dataset (0-indexed)
 # <end_col>: coluna final para leitura do dataset (0-indexed, inclusive)
-OMP_TARGET_OFFLOAD=MANDATORY ./openmp_gpu_kmeans 3 Iris.csv 1 1 4
+OMP_TARGET_OFFLOAD=MANDATORY ./openmp_gpu_kmeans 3 ${1:-Iris.csv} 1 1 4

@@ -15,4 +15,4 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 # <start_row>: linha inicial para leitura do dataset (0-indexed)
 # <start_col>: coluna inicial para leitura do dataset (0-indexed)
 # <end_col>: coluna final para leitura do dataset (0-indexed, inclusive)
-mpirun ./mpi_openmp_kmeans 3 Iris.csv 1 1 4
+mpirun ./mpi_openmp_kmeans 3 ${1:-Iris.csv} 1 1 4

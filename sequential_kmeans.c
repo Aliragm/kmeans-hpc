@@ -89,15 +89,27 @@ void sequential_kmeans(int k, float* flat_dataset, int row_count, const char* or
     free(assignments);
 }
 
-int main(void) {
+int main(int argc, char* argv[]) {
     srand(time(NULL));
 
-    int row_count = 0;
+    int k = 3;
     const char* filename = "Iris.csv";
     int start_row = 1;
     int start_col = 1;
     int end_col = 4;
 
+    if (argc >= 6) {
+        k = atoi(argv[1]);
+        filename = argv[2];
+        start_row = atoi(argv[3]);
+        start_col = atoi(argv[4]);
+        end_col = atoi(argv[5]);
+    } else {
+        printf("Aviso: Argumentos insuficientes. Usando padrao: k=3, Iris.csv, start_row=1, start_col=1, end_col=4\n");
+        printf("Uso: %s <k> <arquivo_dataset> <start_row> <start_col> <end_col>\n\n", argv[0]);
+    }
+
+    int row_count = 0;
     float* dataset = read_csv_to_floats(filename, &row_count, start_col, end_col, 1);
 
     if (dataset == NULL) {
@@ -105,7 +117,7 @@ int main(void) {
         return 1;
     }
 
-    sequential_kmeans(3, dataset, row_count, filename, start_row, start_col, end_col);
+    sequential_kmeans(k, dataset, row_count, filename, start_row, start_col, end_col);
 
     free(dataset);
 
