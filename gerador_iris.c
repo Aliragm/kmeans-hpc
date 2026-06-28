@@ -38,6 +38,9 @@ int main() {
     gerar_csv("Iris_10k.csv", 10000);
     gerar_csv("Iris_100k.csv", 100000);
     gerar_csv("Iris_1M.csv", 1000000);
+    gerar_csv("Iris_10M.csv", 10000000);
+    gerar_csv("Iris_50M.csv", 50000000);
+    gerar_csv("Iris_100M.csv", 100000000);
     printf("--- fim: geracao de arquivos ---\n");
     return 0;
 }
