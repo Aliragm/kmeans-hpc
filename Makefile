@@ -2,6 +2,7 @@
 mpicc   = mpicc
 cc      = gcc
 nvc     = nvc
+nvcc    = nvcc
 cflags  = -O3 -Wall -Wextra
 libs    = -lm
 
@@ -18,6 +19,9 @@ mpi_openmp_bin = mpi_openmp_kmeans
 
 openmp_gpu_src = openmp_gpu_kmeans.c dataset.c
 openmp_gpu_bin = openmp_gpu_kmeans
+
+cuda_src = cuda_kmeans.cu
+cuda_bin = cuda_kmeans
 
 # padrao: compila o kmeans otimizado
 all: $(bin)
@@ -44,12 +48,17 @@ mpi_openmp: $(mpi_openmp_src)
 openmp_gpu: $(openmp_gpu_src)
 	$(nvc) -mp=gpu -Minfo=mp -O2 $^ -o $(openmp_gpu_bin)
 
+# compila a versao CUDA. dataset.o e gerado pelo gcc (linkagem C) e linkado
+# com o objeto do kernel produzido pelo nvcc
+cuda: $(cuda_src) dataset.o
+	$(nvcc) -O3 $^ -o $(cuda_bin) $(libs)
+
 # executa o kmeans com o iris original
 run: $(bin)
 	./$(bin)
 
 # limpa arquivos compilados e saidas
 clean:
-	rm -f *.o $(bin) $(gerador_bin) $(mpi_openmp_bin) $(openmp_gpu_bin) clusters_*.csv
+	rm -f *.o $(bin) $(gerador_bin) $(mpi_openmp_bin) $(openmp_gpu_bin) $(cuda_bin) clusters_*.csv
 
-.PHONY: all gerador datasets run clean mpi_openmp openmp_gpu
+.PHONY: all gerador datasets run clean mpi_openmp openmp_gpu cuda
