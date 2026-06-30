@@ -21,4 +21,4 @@ nvcc -O3 cuda_kmeans.o dataset.o -o cuda_kmeans -lm
 # <start_row>: linha inicial para leitura do dataset (0-indexed)
 # <start_col>: coluna inicial para leitura do dataset (0-indexed)
 # <end_col>: coluna final para leitura do dataset (0-indexed, inclusive)
-./cuda_kmeans 3 Iris.csv 1 1 4
+./cuda_kmeans 3 ${1:-Iris.csv} 1 1 4

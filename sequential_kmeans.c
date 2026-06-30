@@ -81,6 +81,9 @@ void sequential_kmeans(int k, float* flat_dataset, int row_count, const char* or
     double tempo_gasto = (tempo_fim.tv_sec - tempo_inicio.tv_sec) + (tempo_fim.tv_nsec - tempo_inicio.tv_nsec) / 1e9;
 
     printf("\n--- metricas do baseline otimizado ---\n");
+    printf("Arquivo de entrada: %s\n", original_filename);
+    printf("Numero de clusters (k): %d\n", k);
+    printf("Numero de iteracoes: %d\n", iterations);
     printf("tempo de execucao: %f segundos\n", tempo_gasto);
 
     export_dataset_with_clusters(original_filename, "clusters_sequential_kmeans_otimizado.csv", assignments, row_count, start_row);
