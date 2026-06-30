@@ -48,7 +48,7 @@ IMPLEMENTATIONS = [
 def run_command_local(cmd, shell=False):
     """Executa um comando e retorna o código de retorno, stdout e stderr."""
     try:
-        res = subprocess.run(cmd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        res = subprocess.run(cmd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, check=True)
         return 0, res.stdout, res.stderr
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout, e.stderr
